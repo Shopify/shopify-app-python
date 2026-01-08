@@ -28,7 +28,7 @@ jobs:
               console.log(`${author} is a Shopify member`);
               core.setOutput('is-shopify', 'true');
             } catch (error) {
-              console.log(`${author} is not a Shopify member`);
+              console.log(`${author} is not a Shopify member or the check failed: ${error.message}`);
               core.setOutput('is-shopify', 'false');
             }
 

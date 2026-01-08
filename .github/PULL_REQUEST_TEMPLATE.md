@@ -1,6 +1,6 @@
 # Before you create this pull request
 
-Thanks for your interest. This repository is a read-only mirror of a private repository. We don’t accept contributions to this package. **We don't accept pull requests here**. A workflow will close this PR automatically.
+Thanks for your interest. This repository is a read-only mirror of a private repository and **we don't accept pull requests**. A workflow will close this PR automatically.
 
 Do this instead:
 
