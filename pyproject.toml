@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "shopify-app"
+name = "shopifyapp"
 dynamic = ["version"]
 description = "Package for building Shopify applications. Authored and maintained by Shopify."
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
-keywords = ["shopify", "shopify-apps", "token-exchange", "client-credentials", "admin-graphql", "webhooks", "app-proxy", "flow-action"]
+keywords = ["shopify", "token-exchange", "client-credentials", "admin-graphql", "webhooks", "app-proxy", "flow-action"]
 authors = [
     { name = "Shopify" }
 ]

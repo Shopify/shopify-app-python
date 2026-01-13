@@ -6,7 +6,7 @@ import sys
 
 from .._version import __version__
 
-PACKAGE_NAME = "shopify-app"
+PACKAGE_NAME = "shopifyapp"
 
 
 def _get_user_agent() -> str:
@@ -14,7 +14,7 @@ def _get_user_agent() -> str:
     Get the User-Agent string for HTTP requests.
 
     Format: "{package-name} v{version} | Python {python_version}"
-    Example: "shopify-app v0.1.0 | Python 3.11.0"
+    Example: "shopifyapp v0.1.0 | Python 3.11.0"
 
     Returns:
         str: The formatted User-Agent string

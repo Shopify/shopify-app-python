@@ -5,7 +5,7 @@ Python package for building Shopify applications.
 ## Installation
 
 ```bash
-pip install --upgrade shopify-app
+pip install --upgrade shopifyapp
 ```
 
 ## Requirements
