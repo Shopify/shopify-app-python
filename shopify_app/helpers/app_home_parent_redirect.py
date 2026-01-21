@@ -7,11 +7,11 @@ break out of the app home iframe.
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
+from ..utils.encoding import _json_encode_for_js
 from ..utils.headers import _normalize_headers
 
 # Restricted params that should be stripped from Shopify domain redirects
@@ -214,21 +214,3 @@ def _process_redirect_url(redirect_url: str) -> str:
     new_url += fragment
 
     return new_url
-
-
-def _json_encode_for_js(value: str) -> str:
-    """
-    JSON encode a string for safe embedding in JavaScript.
-    Escapes < and > as unicode escapes to prevent XSS.
-
-    Args:
-        value (str): The value to encode
-
-    Returns:
-        str: The JSON-encoded string (including surrounding quotes)
-    """
-    # JSON encode (escapes quotes, backslashes, etc.)
-    encoded = json.dumps(value)
-    # Replace < and > with unicode escapes to prevent script tag injection
-    encoded = encoded.replace("<", "\\u003C").replace(">", "\\u003E")
-    return encoded

@@ -10,6 +10,7 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
+from ..utils.encoding import _json_encode_for_js
 from ..utils.headers import _normalize_headers
 
 LINK_HEADER = '<https://cdn.shopify.com>; rel="preconnect", <https://cdn.shopify.com/shopifycloud/app-bridge.js>; rel="preload"; as="script", <https://cdn.shopify.com/shopifycloud/polaris.js>; rel="preload"; as="script"'
@@ -86,8 +87,10 @@ def app_home_redirect(
     # Determine response based on request type
     if has_auth_header and has_bounce_header:
         # Bounce request - return HTML response with App Bridge using _self
+        # JSON encode URL for safe embedding in JavaScript to prevent XSS
+        encoded_url = _json_encode_for_js(merged_url)
         html = f'<script data-api-key="{client_id}" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>'
-        html += f"<script>window.open('{merged_url}', '_self');</script>"
+        html += f'<script>window.open({encoded_url}, "_self");</script>'
 
         return ResultForReq(
             ok=True,
