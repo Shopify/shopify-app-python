@@ -17,24 +17,30 @@ jobs:
         with:
           script: |
             const author = context.payload.pull_request.user.login;
+            const association = context.payload.pull_request.author_association;
 
-            try {
-              // Check if the author is a member of the Shopify organization
-              await github.rest.orgs.checkMembershipForUser({
-                org: 'Shopify',
-                username: author
-              });
+            // author_association is unreliable when org membership is private
+            // (returns CONTRIBUTOR instead of MEMBER), so also check the
+            // repo permission level which works regardless of visibility
+            const trustedAssociations = ['MEMBER', 'OWNER', 'COLLABORATOR'];
+            let isTrusted = trustedAssociations.includes(association);
 
-              console.log(`${author} is a Shopify member`);
-              core.setOutput('is-shopify', 'true');
-            } catch (error) {
-              if (error && error.status === 404) {
-                console.log(`${author} is not a Shopify member`);
-              } else {
-                console.log(`Error checking Shopify membership for ${author}: ${error}`);
+            if (!isTrusted) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: author,
+                });
+                isTrusted = ['write', 'admin'].includes(data.permission);
+                console.log(`${author} repo permission: ${data.permission}`);
+              } catch (error) {
+                console.log(`Permission check failed for ${author}: ${error.message}`);
               }
-              core.setOutput('is-shopify', 'false');
             }
+
+            console.log(`${author} author_association: ${association}, trusted: ${isTrusted}`);
+            core.setOutput('is-shopify', isTrusted ? 'true' : 'false');
 
       - name: Close PR and comment
         if: steps.check-author.outputs.is-shopify == 'false'
