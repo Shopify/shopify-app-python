@@ -6,7 +6,7 @@ This module provides functions to verify requests from Shopify App Home.
 
 from __future__ import annotations
 
-from typing import Dict
+import re
 from urllib.parse import ParseResult, parse_qs, quote, urlparse
 
 import jwt
@@ -23,10 +23,30 @@ from ..types import (
 from ..utils.headers import _normalize_headers
 
 
+def _remove_query_param(query: str, param: str) -> str:
+    """
+    Remove a query parameter from a raw query string.
+
+    Operates on the raw query string with a regex rather than parsing into
+    native data structures. This avoids the destructive transformations that
+    parse_qs() applies (e.g. URL-decoding values) and preserves the original
+    encoding exactly.
+
+    Args:
+        query: Raw query string without leading '?'
+        param: Parameter name to remove
+
+    Returns:
+        Query string with the parameter removed
+    """
+    cleaned = re.sub(r"(?:^|&)" + re.escape(param) + r"=[^&]*", "", query)
+    return cleaned.lstrip("&")
+
+
 def _build_patch_id_token_redirect(
     parsed_url: ParseResult,
     path: str,
-    query_params: Dict[str, str],
+    raw_query: str,
     app_home_patch_id_token_path: str,
     request: RequestInput,
 ) -> ResultWithExchangeableIdToken:
@@ -36,27 +56,21 @@ def _build_patch_id_token_redirect(
     Args:
         parsed_url: Parsed URL object from urlparse
         path: Request path
-        query_params: Dictionary of query parameters
+        raw_query: Raw query string (without leading '?')
         app_home_patch_id_token_path: Path to the patch id token page
         request: The original request object
 
     Returns:
         ResultWithExchangeableIdToken: Redirect response with 302 status and Location header
     """
-    clean_params = query_params.copy()
-    clean_params.pop("id_token", None)
-
-    # Build reload path with query string (preserve base64 = padding)
-    reload_parts = [f"{key}={value}" for key, value in clean_params.items()]
-    reload_query = "&".join(reload_parts)
-    reload_path = path + ("?" + reload_query if reload_query else "")
+    clean_query = _remove_query_param(raw_query, "id_token")
+    reload_path = path + ("?" + clean_query if clean_query else "")
 
     # Build patch id token URL with shopify-reload parameter
-    patch_id_token_query_parts = [
-        f"{key}={value}" for key, value in clean_params.items()
-    ]
-    patch_id_token_query_parts.append(f"shopify-reload={quote(reload_path, safe='')}")
-    patch_id_token_query = "&".join(patch_id_token_query_parts)
+    shopify_reload = f"shopify-reload={quote(reload_path, safe='')}"
+    patch_id_token_query = (
+        f"{clean_query}&{shopify_reload}" if clean_query else shopify_reload
+    )
 
     patch_id_token_location = f"{parsed_url.scheme}://{parsed_url.netloc}{app_home_patch_id_token_path}?{patch_id_token_query}"
 
@@ -205,7 +219,11 @@ def verify_app_home_req(
         # If no id_token, redirect to patch ID token page
         if not id_token_param:
             return _build_patch_id_token_redirect(
-                parsed_url, path, query_params, app_home_patch_id_token_path, request
+                parsed_url,
+                path,
+                parsed_url.query,
+                app_home_patch_id_token_path,
+                request,
             )
 
         id_token = id_token_param
@@ -279,7 +297,11 @@ def verify_app_home_req(
         # For document requests with invalid/stale tokens, redirect to patch ID token page
         if not has_authorization_header:
             return _build_patch_id_token_redirect(
-                parsed_url, path, query_params, app_home_patch_id_token_path, request
+                parsed_url,
+                path,
+                parsed_url.query,
+                app_home_patch_id_token_path,
+                request,
             )
 
         # For fetch requests, return 401 with retry header
@@ -359,20 +381,13 @@ def verify_app_home_req(
     new_id_token_response = None
     if not has_authorization_header:
         # Document request - build patch ID token URL
-        clean_params = query_params.copy()
-        clean_params.pop("id_token", None)
+        clean_query = _remove_query_param(parsed_url.query, "id_token")
+        reload_path = path + ("?" + clean_query if clean_query else "")
 
-        reload_parts = [f"{key}={value}" for key, value in clean_params.items()]
-        reload_query = "&".join(reload_parts)
-        reload_path = path + ("?" + reload_query if reload_query else "")
-
-        patch_id_token_query_parts = [
-            f"{key}={value}" for key, value in clean_params.items()
-        ]
-        patch_id_token_query_parts.append(
-            f"shopify-reload={quote(reload_path, safe='')}"
+        shopify_reload = f"shopify-reload={quote(reload_path, safe='')}"
+        patch_id_token_query = (
+            f"{clean_query}&{shopify_reload}" if clean_query else shopify_reload
         )
-        patch_id_token_query = "&".join(patch_id_token_query_parts)
 
         patch_id_token_location = f"{parsed_url.scheme}://{parsed_url.netloc}{app_home_patch_id_token_path}?{patch_id_token_query}"
 
