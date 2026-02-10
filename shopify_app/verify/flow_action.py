@@ -9,6 +9,9 @@ from __future__ import annotations
 from ..types import AppConfig, RequestInput, ResultForReq
 from ._body_hmac_in_header import _verify_body_hmac_in_header
 
+_FLOW_HMAC_HEADER_NAMES = ("x-shopify-hmac-sha256",)
+_FLOW_SHOP_HEADER_NAMES = ("x-shopify-shop-domain",)
+
 
 def verify_flow_action_req(request: RequestInput, config: AppConfig) -> ResultForReq:
     """
@@ -21,4 +24,10 @@ def verify_flow_action_req(request: RequestInput, config: AppConfig) -> ResultFo
     Returns:
         ResultForReq: Verification result with ok, shop, log, and response fields
     """
-    return _verify_body_hmac_in_header(request, config, "Flow action")
+    return _verify_body_hmac_in_header(
+        request,
+        config,
+        "Flow action",
+        hmac_header_names=_FLOW_HMAC_HEADER_NAMES,
+        shop_header_names=_FLOW_SHOP_HEADER_NAMES,
+    )

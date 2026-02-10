@@ -9,6 +9,9 @@ from __future__ import annotations
 from ..types import AppConfig, RequestInput, ResultForReq
 from ._body_hmac_in_header import _verify_body_hmac_in_header
 
+_WEBHOOK_HMAC_HEADER_NAMES = ("x-shopify-hmac-sha256", "shopify-hmac-sha256")
+_WEBHOOK_SHOP_HEADER_NAMES = ("x-shopify-shop-domain", "shopify-shop-domain")
+
 
 def verify_webhook_req(request: RequestInput, config: AppConfig) -> ResultForReq:
     """
@@ -21,4 +24,10 @@ def verify_webhook_req(request: RequestInput, config: AppConfig) -> ResultForReq
     Returns:
         ResultForReq: Verification result with ok, shop, log, and response fields
     """
-    return _verify_body_hmac_in_header(request, config, "Webhook")
+    return _verify_body_hmac_in_header(
+        request,
+        config,
+        "Webhook",
+        hmac_header_names=_WEBHOOK_HMAC_HEADER_NAMES,
+        shop_header_names=_WEBHOOK_SHOP_HEADER_NAMES,
+    )

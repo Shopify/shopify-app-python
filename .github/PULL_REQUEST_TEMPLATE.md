@@ -5,6 +5,6 @@ Thanks for your interest. This repository is a read-only mirror of a private rep
 Do this instead:
 
 - Cancel this PR.
-- Report bugs, request features, or share feedback in the [Shopify dev community forums](https://community.shopify.dev/c/shopify-cli-libraries/14)
+- Report bugs, request features, or share feedback in the [Shopify dev community forums](https://community.shopify.dev/new-topic?title=[Feedback%20for%20python%20package]&category=shopify-cli-libraries&tags=python-library&domain=Python%20Library)
 
 For more details see [CONTRIBUTING.md](https://github.com/Shopify/shopify-app-python/blob/main/CONTRIBUTING.md).
