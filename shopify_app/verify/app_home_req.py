@@ -20,6 +20,7 @@ from ..types import (
     Res,
     ResultWithExchangeableIdToken,
 )
+from ..utils import redact_http_log
 from ..utils.headers import _normalize_headers
 
 
@@ -63,6 +64,7 @@ def _build_patch_id_token_redirect(
     Returns:
         ResultWithExchangeableIdToken: Redirect response with 302 status and Location header
     """
+    req = redact_http_log(request)
     clean_query = _remove_query_param(raw_query, "id_token")
     reload_path = path + ("?" + clean_query if clean_query else "")
 
@@ -80,7 +82,7 @@ def _build_patch_id_token_redirect(
         log=LogWithReq(
             code="redirect_to_patch_id_token_page",
             detail="Embedded app without id_token. Redirect to the patch ID token page to obtain a new token using the provided response.",
-            req=request,
+            req=req,
         ),
         response=Res(
             status=302,
@@ -109,6 +111,7 @@ def verify_app_home_req(
     Returns:
         ResultWithExchangeableIdToken: Verification result with exchangeable ID token
     """
+    req = redact_http_log(request)
     # Validate app_home_patch_id_token_path
     if not isinstance(app_home_patch_id_token_path, str):
         return ResultWithExchangeableIdToken(
@@ -117,7 +120,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected appHomePatchIdTokenPath to be a non-empty string",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -136,7 +139,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected appHomePatchIdTokenPath to be a non-empty string, but got ''",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -157,7 +160,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.url to be a non-empty string",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -177,7 +180,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.headers to be an object",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -235,7 +238,7 @@ def verify_app_home_req(
                 log=LogWithReq(
                     code="invalid_id_token",
                     detail="ID token verification failed. Respond 401 Unauthorized using the provided response.",
-                    req=request,
+                    req=req,
                 ),
                 response=Res(
                     status=401,
@@ -257,7 +260,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="missing_authorization_and_id_token",
                 detail="Neither Authorization header nor id_token query parameter present. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -318,7 +321,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code=error_code,
                 detail=detail_msg,
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -348,7 +351,7 @@ def verify_app_home_req(
             log=LogWithReq(
                 code="invalid_aud",
                 detail="ID token audience (aud) claim does not match clientId. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -419,7 +422,7 @@ def verify_app_home_req(
         log=LogWithReq(
             code="verified",
             detail=log_detail,
-            req=request,
+            req=req,
         ),
         response=Res(
             status=200,

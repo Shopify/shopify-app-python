@@ -11,6 +11,7 @@ from typing import Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
+from ..utils import redact_http_log
 from ..utils.encoding import _json_encode_for_js
 from ..utils.headers import _normalize_headers
 
@@ -56,6 +57,7 @@ def app_home_parent_redirect(
     client_id = config.get("client_id", "")
     shop_domain = f"{shop}.myshopify.com"
 
+    req = redact_http_log(request)
     # Validate request object
     headers = request.get("headers")
     if not isinstance(headers, dict):
@@ -65,7 +67,7 @@ def app_home_parent_redirect(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.headers to be an object",
-                req=request,
+                req=req,
             ),
             response=Res(status=500, body="", headers={}),
         )
@@ -78,7 +80,7 @@ def app_home_parent_redirect(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.url to be a non-empty string",
-                req=request,
+                req=req,
             ),
             response=Res(status=500, body="", headers={}),
         )
@@ -95,7 +97,7 @@ def app_home_parent_redirect(
             log=LogWithReq(
                 code="invalid_target",
                 detail=f"Target must be '_top' or '_blank'. Received {target}. Respond 400 Bad Request using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),
         )
@@ -109,7 +111,7 @@ def app_home_parent_redirect(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Redirect URL must use http or https scheme",
-                req=request,
+                req=req,
             ),
             response=Res(status=500, body="", headers={}),
         )
@@ -132,7 +134,7 @@ def app_home_parent_redirect(
             log=LogWithReq(
                 code="app_home_parent_redirect_success",
                 detail="App Home Parent Redirect response constructed. Respond with the provided response to redirect outside the app iframe.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -158,7 +160,7 @@ def app_home_parent_redirect(
         log=LogWithReq(
             code="app_home_parent_redirect_success",
             detail="App Home Parent Redirect response constructed. Respond with the provided response to redirect outside the app iframe.",
-            req=request,
+            req=req,
         ),
         response=Res(
             status=200,

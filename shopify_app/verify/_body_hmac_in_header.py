@@ -15,6 +15,7 @@ import hmac
 from typing import Sequence
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
+from ..utils import redact_http_log
 from ..utils.headers import _normalize_headers
 
 
@@ -49,6 +50,7 @@ def _verify_body_hmac_in_header(
     Returns:
         ResultForReq: Verification result with ok, shop, log, and response fields
     """
+    req = redact_http_log(request)
     # Validate request object
     method = request.get("method")
     if not isinstance(method, str) or method == "":
@@ -58,7 +60,7 @@ def _verify_body_hmac_in_header(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.method to be a non-empty string",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -75,7 +77,7 @@ def _verify_body_hmac_in_header(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.headers to be an object",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -92,7 +94,7 @@ def _verify_body_hmac_in_header(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.body to be a string",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -115,7 +117,7 @@ def _verify_body_hmac_in_header(
                     f"{request_type} requests are expected to use the POST method. "
                     "Respond 405 Method Not Allowed using the provided response."
                 ),
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=405,
@@ -143,7 +145,7 @@ def _verify_body_hmac_in_header(
                     "Required hmac header is missing. "
                     "Respond 400 Bad Request using the provided response."
                 ),
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=400,
@@ -179,7 +181,7 @@ def _verify_body_hmac_in_header(
                     "hmac header value does not match the body's HMAC. "
                     "Respond 401 Unauthorized using the provided response."
                 ),
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -202,7 +204,7 @@ def _verify_body_hmac_in_header(
                 f"{request_type} request verified successfully. "
                 "Respond 200 OK using the provided response."
             ),
-            req=request,
+            req=req,
         ),
         response=Res(
             status=200,

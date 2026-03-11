@@ -6,6 +6,7 @@ This module provides functions to refresh expired access tokens.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional, Tuple, Union, cast
 
@@ -21,7 +22,7 @@ from ..types import (
     TokenExchangeResult,
     User,
 )
-from ..utils import _get_attr, _get_user_agent
+from ..utils import _get_attr, _get_user_agent, redact_http_log
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 from ._response_builders import build_network_error_response
 from ._validation import validate_client_id, validate_shop
@@ -96,12 +97,14 @@ def refresh_access_token(
     http_logs: List[HttpLog] = []
 
     # Build the request object for logging
-    req_log: RequestInput = {
-        "url": token_endpoint,
-        "method": "POST",
-        "headers": request_headers,
-        "body": "",  # Don't log sensitive body
-    }
+    req_log: RequestInput = redact_http_log(
+        {
+            "url": token_endpoint,
+            "method": "POST",
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     with HTTPClientContext(http_client) as client:
         while attempt <= max_retries:
@@ -520,12 +523,14 @@ async def refresh_access_token_async(
     http_logs: List[HttpLog] = []
 
     # Build the request object for logging
-    req_log: RequestInput = {
-        "url": token_endpoint,
-        "method": "POST",
-        "headers": request_headers,
-        "body": "",  # Don't log sensitive body
-    }
+    req_log: RequestInput = redact_http_log(
+        {
+            "url": token_endpoint,
+            "method": "POST",
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     async with AsyncHTTPClientContext(http_client) as client:
         while attempt <= max_retries:

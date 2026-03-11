@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import httpx
 
 from shopify_app.types import AppConfig, GQLResult, HttpLog, Log, RequestInput, Res
-from shopify_app.utils import _get_user_agent, _to_res
+from shopify_app.utils import _get_user_agent, _to_res, redact_http_log
 
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 
@@ -80,6 +80,14 @@ def admin_graphql_request(
     # Execute request with retry logic
     attempt = 0
     logs: List[HttpLog] = []
+    req: RequestInput = redact_http_log(
+        {
+            "url": endpoint,
+            "method": "POST",
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     # Use injected client or create one via context manager
     if http_client is not None:
@@ -101,13 +109,6 @@ def admin_graphql_request(
                 status_code = response.status_code
                 response_body = response.text
                 response_headers = dict(response.headers)
-
-                req: RequestInput = {
-                    "url": endpoint,
-                    "method": "POST",
-                    "headers": request_headers,
-                    "body": json.dumps(request_body),
-                }
 
                 res = Res(
                     status=status_code, body=response_body, headers=response_headers
@@ -263,13 +264,6 @@ def admin_graphql_request(
 
             except (httpx.RequestError, httpx.ConnectError, httpx.TimeoutException):
                 # Network/connection errors - return immediately without retry
-                # Use the req already defined above, create new res for error
-                error_req: RequestInput = {
-                    "url": endpoint,
-                    "method": "POST",
-                    "headers": request_headers,
-                    "body": json.dumps(request_body),
-                }
                 error_res = Res(status=0, body="", headers={})
                 return GQLResult(
                     ok=False,
@@ -282,7 +276,7 @@ def admin_graphql_request(
                         HttpLog(
                             code="network_error",
                             detail="Network error occurred during GraphQL request",
-                            req=error_req,
+                            req=req,
                             res=error_res,
                         )
                     ],
@@ -691,6 +685,14 @@ async def admin_graphql_request_async(
     # Execute request with retry logic
     attempt = 0
     logs: List[HttpLog] = []
+    req: RequestInput = redact_http_log(
+        {
+            "url": endpoint,
+            "method": "POST",
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     async with AsyncHTTPClientContext(http_client) as client:
         while attempt <= max_retries:
@@ -704,13 +706,6 @@ async def admin_graphql_request_async(
                 status_code = response.status_code
                 response_body = response.text
                 response_headers = dict(response.headers)
-
-                req: RequestInput = {
-                    "url": endpoint,
-                    "method": "POST",
-                    "headers": request_headers,
-                    "body": json.dumps(request_body),
-                }
 
                 res = Res(
                     status=status_code, body=response_body, headers=response_headers
@@ -876,13 +871,6 @@ async def admin_graphql_request_async(
 
             except (httpx.RequestError, httpx.ConnectError, httpx.TimeoutException):
                 # Network/connection errors - return immediately without retry
-                # Use different variable names to avoid redefinition
-                error_req: RequestInput = {
-                    "url": endpoint,
-                    "method": "POST",
-                    "headers": request_headers,
-                    "body": json.dumps(request_body),
-                }
                 error_res = Res(status=0, body="", headers={})
                 return GQLResult(
                     ok=False,
@@ -895,7 +883,7 @@ async def admin_graphql_request_async(
                         HttpLog(
                             code="network_error",
                             detail="Network error occurred during GraphQL request",
-                            req=error_req,
+                            req=req,
                             res=error_res,
                         )
                     ],

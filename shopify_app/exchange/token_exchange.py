@@ -25,7 +25,7 @@ from ..types import (
     TokenExchangeResult,
     User,
 )
-from ..utils import _get_attr, _get_user_agent, _to_res
+from ..utils import _get_attr, _get_user_agent, _to_res, redact_http_log
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 from ._response_builders import build_network_error_response
 from ._validation import validate_client_id
@@ -355,12 +355,14 @@ def _build_request(client_id, client_secret, jwt_string, access_mode, shop_url):
         "User-Agent": _get_user_agent(),
     }
 
-    req_obj = {
-        "method": "POST",
-        "url": token_endpoint,
-        "headers": request_headers,
-        "body": json.dumps(request_body),
-    }
+    req_obj = redact_http_log(
+        {
+            "method": "POST",
+            "url": token_endpoint,
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     return token_endpoint, request_body, request_headers, req_obj
 

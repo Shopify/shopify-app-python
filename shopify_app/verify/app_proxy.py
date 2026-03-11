@@ -19,6 +19,7 @@ from ..types import (
     Res,
     ResultWithLoggedInCustomerId,
 )
+from ..utils import redact_http_log
 
 
 def verify_app_proxy_req(
@@ -34,6 +35,7 @@ def verify_app_proxy_req(
     Returns:
         ResultWithLoggedInCustomerId: Verification result with logged_in_customer_id
     """
+    req = redact_http_log(request)
     # Validate request object
     url = request.get("url")
     if not isinstance(url, str) or url == "":
@@ -44,7 +46,7 @@ def verify_app_proxy_req(
             log=LogWithReq(
                 code="configuration_error",
                 detail="Expected request.url to be a non-empty string",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=500,
@@ -78,7 +80,7 @@ def verify_app_proxy_req(
             log=LogWithReq(
                 code="missing_timestamp",
                 detail="Required `timestamp` query parameter is missing. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -104,7 +106,7 @@ def verify_app_proxy_req(
                 log=LogWithReq(
                     code="timestamp_too_old",
                     detail="The `timestamp` query parameter is more than 90 seconds old. Respond 401 Unauthorized using the provided response.",
-                    req=request,
+                    req=req,
                 ),
                 response=Res(
                     status=401,
@@ -120,7 +122,7 @@ def verify_app_proxy_req(
             log=LogWithReq(
                 code="invalid_timestamp",
                 detail="The `timestamp` query parameter is not a valid integer. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -138,7 +140,7 @@ def verify_app_proxy_req(
             log=LogWithReq(
                 code="missing_signature",
                 detail="Required `signature` query parameter is missing. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -178,7 +180,7 @@ def verify_app_proxy_req(
             log=LogWithReq(
                 code="invalid_signature",
                 detail="`signature` query parameter does not match the expected HMAC. Respond 401 Unauthorized using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(
                 status=401,
@@ -212,7 +214,7 @@ def verify_app_proxy_req(
         log=LogWithReq(
             code="verified",
             detail="App Proxy request verified successfully. Proceed with business logic.",
-            req=request,
+            req=req,
         ),
         response=Res(
             status=200,
