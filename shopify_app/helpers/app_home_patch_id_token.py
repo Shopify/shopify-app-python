@@ -10,6 +10,7 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlparse
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
+from ..utils import redact_http_log
 
 
 def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultForReq:
@@ -27,6 +28,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
         ResultForReq: Result with ok, shop, log, and response containing HTML and headers
     """
     client_id = config.get("client_id", "")
+    req = redact_http_log(request)
 
     # Check for missing client ID
     if not client_id:
@@ -36,7 +38,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
             log=LogWithReq(
                 code="missing_client_id",
                 detail="Client ID is required but was not provided. Check configuration and respond 500 Internal Server Error using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(status=500, body="Internal Server Error", headers={}),
         )
@@ -51,7 +53,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
             log=LogWithReq(
                 code="missing_request_url",
                 detail="Request URL is required but was not provided.",
-                req=request,
+                req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),
         )
@@ -74,7 +76,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
             log=LogWithReq(
                 code="missing_shop",
                 detail="Shop parameter is required in request URL query string but was not provided. Respond 400 Bad Request using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),
         )
@@ -87,7 +89,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
             log=LogWithReq(
                 code="missing_shopify_reload",
                 detail="shopify-reload parameter is required in request URL query string but was not provided. Respond 400 Bad Request using the provided response.",
-                req=request,
+                req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),
         )
@@ -101,7 +103,7 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
         log=LogWithReq(
             code="patch_id_token_page_success",
             detail="App Home Patch ID Token page Response constructed. Respond with the provided response and App Bridge will obtain an id token.",
-            req=request,
+            req=req,
         ),
         response=Res(
             status=200,

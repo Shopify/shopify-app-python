@@ -22,7 +22,7 @@ from ..types import (
     RequestInput,
     Res,
 )
-from ..utils import _get_user_agent
+from ..utils import _get_user_agent, redact_http_log
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 from ._response_builders import build_network_error_response
 from ._validation import validate_shop
@@ -171,12 +171,14 @@ def _build_request(client_id, client_secret, shop):
         "User-Agent": _get_user_agent(),
     }
 
-    req_obj = {
-        "method": "POST",
-        "url": token_endpoint,
-        "headers": request_headers,
-        "body": json.dumps(request_body),
-    }
+    req_obj = redact_http_log(
+        {
+            "method": "POST",
+            "url": token_endpoint,
+            "headers": request_headers,
+            "body": json.dumps(request_body),
+        }
+    )
 
     return token_endpoint, request_body, request_headers, req_obj
 
