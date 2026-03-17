@@ -186,7 +186,7 @@ class TokenExchangeAccessToken:
     expires: Optional[str]
     scope: str
     access_mode: Literal["online", "offline"]
-    refresh_token: str
+    refresh_token: Optional[str]
     refresh_token_expires: Optional[str]
     user: Optional[User]
 
