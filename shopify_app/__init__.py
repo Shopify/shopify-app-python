@@ -247,6 +247,7 @@ class ShopifyApp:
         access_mode: str,
         id_token: Optional[Union[IdTokenDetails, dict]] = None,
         invalid_token_response: Optional[Union[Res, dict]] = None,
+        expiring: bool = True,
         http_client: Optional[httpx.Client] = None,
     ) -> TokenExchangeResult:
         """
@@ -256,6 +257,7 @@ class ShopifyApp:
             access_mode (str): Either "online" or "offline"
             id_token (IdTokenDetails | dict): IdTokenDetails or dict with exchangeable, token, and claims
             invalid_token_response (Res | dict): Pre-built response to return if token is invalid (or None)
+            expiring (bool): Whether the token should expire (default True). Set to False for non-expiring tokens.
             http_client: Optional HTTP client for testing (undocumented)
 
         Returns:
@@ -266,6 +268,7 @@ class ShopifyApp:
             self.config,
             id_token=id_token,
             invalid_token_response=invalid_token_response,
+            expiring=expiring,
             http_client=http_client,
         )
 
@@ -354,6 +357,7 @@ class ShopifyApp:
         access_mode: str,
         id_token: Optional[Union[IdTokenDetails, dict]] = None,
         invalid_token_response: Optional[Union[Res, dict]] = None,
+        expiring: bool = True,
         http_client: Optional[httpx.AsyncClient] = None,
     ) -> TokenExchangeResult:
         """
@@ -365,6 +369,7 @@ class ShopifyApp:
             access_mode (str): Either "online" or "offline"
             id_token (IdTokenDetails | dict): IdTokenDetails or dict with exchangeable, token, and claims
             invalid_token_response (Res | dict): Pre-built response to return if token is invalid (or None)
+            expiring (bool): Whether the token should expire (default True). Set to False for non-expiring tokens.
             http_client: Optional async HTTP client for testing (httpx.AsyncClient)
 
         Returns:
@@ -375,6 +380,7 @@ class ShopifyApp:
             self.config,
             id_token=id_token,
             invalid_token_response=invalid_token_response,
+            expiring=expiring,
             http_client=http_client,
         )
 

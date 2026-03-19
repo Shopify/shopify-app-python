@@ -47,6 +47,7 @@ def token_exchange(
     app_config: AppConfig,
     id_token: Optional[Union[IdTokenDetails, dict]] = None,
     invalid_token_response: Optional[Union[Res, dict]] = None,
+    expiring: bool = True,
     http_client: Optional[httpx.Client] = None,
 ) -> TokenExchangeResult:
     """
@@ -80,6 +81,19 @@ def token_exchange(
             raise RuntimeError("_validate_access_mode returned invalid but no error")
         return error
 
+    if not expiring and access_mode == "online":
+        return TokenExchangeResult(
+            ok=False,
+            shop=None,
+            access_token=None,
+            log=Log(
+                code="configuration_error",
+                detail="The expiring parameter is only applicable to offline access tokens. Online tokens always expire.",
+            ),
+            http_logs=[],
+            response=Res(status=500, body="", headers={}),
+        )
+
     is_valid, error = _validate_id_token(id_token)
     if not is_valid:
         if error is None:
@@ -104,7 +118,7 @@ def token_exchange(
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(
-        client_id, client_secret, jwt_string, access_mode, shop_url
+        client_id, client_secret, jwt_string, access_mode, shop_url, expiring
     )
 
     # Make the request with retry logic for 429 responses
@@ -148,7 +162,10 @@ def token_exchange(
                         Literal["online", "offline"], access_mode
                     )
                     return _handle_success_response(
-                        response_data, shop_name, access_mode_literal, http_logs
+                        response_data,
+                        shop_name,
+                        access_mode_literal,
+                        http_logs,
                     )
 
                 # Handle 429 rate limit with retry helper
@@ -329,7 +346,9 @@ def _validate_id_token(
     return (True, None)
 
 
-def _build_request(client_id, client_secret, jwt_string, access_mode, shop_url):
+def _build_request(
+    client_id, client_secret, jwt_string, access_mode, shop_url, expiring: bool = True
+):
     """Build token exchange request components."""
     import json
 
@@ -344,7 +363,7 @@ def _build_request(client_id, client_secret, jwt_string, access_mode, shop_url):
         "subject_token": jwt_string,
         "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
         "requested_token_type": requested_token_type,
-        "expiring": 1,
+        "expiring": 1 if expiring else 0,
     }
 
     token_endpoint = f"{shop_url}/admin/oauth/access_token"
@@ -487,15 +506,16 @@ def _handle_success_response(
 ) -> TokenExchangeResult:
     """Handle successful token exchange response."""
     access_token = response_data.get("access_token", "")
-    expires_in = response_data.get("expires_in")
     scope = response_data.get("scope", "")
-    refresh_token = response_data.get("refresh_token", "")
-    refresh_token_expires_in = response_data.get("refresh_token_expires_in")
     associated_user = response_data.get("associated_user")
     associated_user_scope = response_data.get("associated_user_scope", "")
 
-    # Calculate expiration timestamps
-    # If expires_in is None, the token doesn't expire
+    expires_in = response_data.get("expires_in")
+    refresh_token = response_data.get("refresh_token")
+    refresh_token_expires_in = response_data.get("refresh_token_expires_in")
+
+    # Calculate expiration timestamps from response data.
+    # If expires_in is absent (e.g. non-expiring offline tokens), expires will be None.
     expires = (
         (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
@@ -653,6 +673,7 @@ async def token_exchange_async(
     app_config: AppConfig,
     id_token: Optional[Union[IdTokenDetails, dict]] = None,
     invalid_token_response: Optional[Union[Res, dict]] = None,
+    expiring: bool = True,
     http_client: Optional[httpx.AsyncClient] = None,
 ) -> TokenExchangeResult:
     """
@@ -692,6 +713,19 @@ async def token_exchange_async(
             raise RuntimeError("_validate_access_mode returned invalid but no error")
         return error
 
+    if not expiring and access_mode == "online":
+        return TokenExchangeResult(
+            ok=False,
+            shop=None,
+            access_token=None,
+            log=Log(
+                code="configuration_error",
+                detail="The expiring parameter is only applicable to offline access tokens. Online tokens always expire.",
+            ),
+            http_logs=[],
+            response=Res(status=500, body="", headers={}),
+        )
+
     is_valid, error = _validate_id_token(id_token)
     if not is_valid:
         if error is None:
@@ -716,7 +750,7 @@ async def token_exchange_async(
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(
-        client_id, client_secret, jwt_string, access_mode, shop_url
+        client_id, client_secret, jwt_string, access_mode, shop_url, expiring
     )
 
     # Make the request with retry logic for 429 responses
@@ -760,7 +794,10 @@ async def token_exchange_async(
                         Literal["online", "offline"], access_mode
                     )
                     return _handle_success_response(
-                        response_data, shop_name, access_mode_literal, http_logs
+                        response_data,
+                        shop_name,
+                        access_mode_literal,
+                        http_logs,
                     )
 
                 # Handle 429 rate limit with retry helper

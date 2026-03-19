@@ -192,7 +192,7 @@ def refresh_access_token(
 
 
 def _validate_refresh_token(
-    refresh_token: str,
+    refresh_token: Optional[str],
     shop: Optional[str] = None,
 ) -> Tuple[bool, Optional[TokenExchangeResult]]:
     """Validate refresh_token parameter.
@@ -204,6 +204,21 @@ def _validate_refresh_token(
     Returns:
         tuple: (is_valid: bool, error_response: TokenExchangeResult or None)
     """
+    if refresh_token is None:
+        return (
+            False,
+            TokenExchangeResult(
+                ok=False,
+                shop=None,
+                access_token=None,
+                log=Log(
+                    code="configuration_error",
+                    detail="Non-expiring access tokens cannot be refreshed.",
+                ),
+                http_logs=[],
+                response=Res(status=500, body="", headers={}),
+            ),
+        )
     if not refresh_token:
         return (
             False,

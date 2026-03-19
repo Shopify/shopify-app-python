@@ -358,9 +358,9 @@ You will need to write the database code to get and save access tokens. The pack
 | `access_mode`           | str        | Access mode: "online" or "offline"                  |
 | `token`                 | str        | The access token                                    |
 | `scope`                 | str        | Granted scopes                                      |
-| `refresh_token`         | str        | Token used to refresh the access token              |
-| `expires`               | str        | ISO 8601 datetime when access token expires         |
-| `refresh_token_expires` | str        | ISO 8601 datetime when refresh token expires        |
+| `refresh_token`         | str or None | Token used to refresh the access token. `None` for non-expiring tokens. |
+| `expires`               | str or None | ISO 8601 datetime when access token expires. `None` for non-expiring tokens. |
+| `refresh_token_expires` | str or None | ISO 8601 datetime when refresh token expires. `None` for non-expiring tokens. |
 | `user_id`               | str        | A unique identifier for the user                    |
 | `user`                  | AccessUser | User details (online mode only, `None` for offline) |
 
@@ -400,6 +400,7 @@ If there is no access token in the database, use token exchange to get one:
 Note:
 
 - `exchange_using_token_exchange` receives `result.new_id_token_response` from the verify function. This allows Shopify to automatically retry this request if the id token has become stale.
+- Pass `expiring=False` to request a non-expiring token (no `refresh_token` or `refresh_token_expires`). Defaults to `True`.
 - If using online access tokens, use the `user_id` provided by the `result`.
 - If your app has need to access the admin API outside of requests from App Home, Admin UI Extensions or POS UI Extensions you should also exchange and save an offline token.
 
