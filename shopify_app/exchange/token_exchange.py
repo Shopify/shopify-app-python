@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
@@ -327,21 +328,36 @@ def _validate_id_token(
             ),
         )
 
-    if ".myshopify.com" not in shop_from_token:
-        return (
-            False,
-            TokenExchangeResult(
-                ok=False,
-                shop=shop,
-                access_token=None,
-                log=Log(
-                    code="configuration_error",
-                    detail="Expected idToken.claims.dest to be a valid shop URL (e.g., 'https://shop.myshopify.com' or 'shop.myshopify.com')",
-                ),
-                http_logs=[],
-                response=Res(status=500, body="", headers={}),
+    invalid_dest_error = (
+        False,
+        TokenExchangeResult(
+            ok=False,
+            shop=shop,
+            access_token=None,
+            log=Log(
+                code="configuration_error",
+                detail="Expected idToken.claims.dest to be a valid shop URL (e.g., 'https://shop.myshopify.com' or 'shop.myshopify.com')",
             ),
-        )
+            http_logs=[],
+            response=Res(status=500, body="", headers={}),
+        ),
+    )
+
+    # Strip protocol prefix
+    dest_without_protocol = shop_from_token.replace("https://", "").replace(
+        "http://", ""
+    )
+
+    # dest must end with .myshopify.com (not just contain it anywhere)
+    if not dest_without_protocol.endswith(".myshopify.com"):
+        return invalid_dest_error
+
+    # Extract shop name by removing .myshopify.com suffix
+    shop_name_part = dest_without_protocol[: -len(".myshopify.com")]
+
+    # Validate shop name against regex
+    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$", shop_name_part):
+        return invalid_dest_error
 
     return (True, None)
 

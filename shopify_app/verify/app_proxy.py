@@ -71,6 +71,24 @@ def verify_app_proxy_req(
         else:
             params[key] = value
 
+    # Reject requests with multiple shop URL params
+    if isinstance(params.get("shop"), list):
+        return ResultWithLoggedInCustomerId(
+            ok=False,
+            shop=None,
+            logged_in_customer_id=None,
+            log=LogWithReq(
+                code="multiple_shop_parameters",
+                detail="Request has multiple `shop` query parameters. Respond 401 Unauthorized using the provided response.",
+                req=req,
+            ),
+            response=Res(
+                status=401,
+                body="Unauthorized",
+                headers={},
+            ),
+        )
+
     # Check for missing timestamp
     if "timestamp" not in params:
         return ResultWithLoggedInCustomerId(

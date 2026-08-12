@@ -58,7 +58,7 @@ def refresh_access_token(
 
     # Validate token expiration (returns early if token still valid or refresh token expired)
     should_continue, response = _validate_token_expiry(
-        expires, refresh_token_expires, shop
+        expires, refresh_token_expires, shop, refresh_token
     )
     if not should_continue:
         if response is None:
@@ -241,6 +241,7 @@ def _validate_token_expiry(
     expires: str,
     refresh_token_expires: str,
     shop: str,
+    refresh_token: Optional[str],
 ) -> Tuple[bool, Optional[TokenExchangeResult]]:
     """Validate token expiration and determine if refresh is needed.
 
@@ -275,6 +276,24 @@ def _validate_token_expiry(
                 )
         except ValueError:
             pass  # Invalid date format, continue with refresh
+
+    # A non-expiring token has no expiry and no refresh token; it never needs refreshing.
+    # (An expiring token that still has a refresh token must fall through and refresh.)
+    if not expires and not refresh_token:
+        return (
+            False,
+            TokenExchangeResult(
+                ok=True,
+                shop=shop,
+                access_token=None,
+                log=Log(
+                    code="non_expiring_no_refresh_needed",
+                    detail="Access token does not expire, so no refresh is needed. Proceed with business logic.",
+                ),
+                http_logs=[],
+                response=Res(status=200, body="", headers={}),
+            ),
+        )
 
     # Check if access token is still valid (with 60-second buffer)
     if expires:
@@ -499,7 +518,7 @@ async def refresh_access_token_async(
 
     # Validate token expiration (returns early if token still valid or refresh token expired)
     should_continue, response = _validate_token_expiry(
-        expires, refresh_token_expires, shop
+        expires, refresh_token_expires, shop, refresh_token
     )
     if not should_continue:
         if response is None:
