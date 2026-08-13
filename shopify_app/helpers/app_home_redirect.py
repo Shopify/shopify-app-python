@@ -171,6 +171,11 @@ def _is_valid_relative_url(redirect_url: str) -> bool:
     if redirect_url.startswith("//"):
         return False
 
+    # Must not be backslash-prefixed (/\evil.com) — browsers normalize \ to /
+    # per the WHATWG URL Standard, turning it into a protocol-relative URL
+    if len(redirect_url) > 1 and redirect_url[1] == "\\":
+        return False
+
     return True
 
 
