@@ -219,7 +219,7 @@ def _verify_non_exchangeable_id_token(
 
     # Extract shop from dest claim
     dest = payload.get("dest", "")
-    shop = dest.replace(".myshopify.com", "") if dest else ""
+    shop = dest.replace("https://", "").replace(".myshopify.com", "") if dest else ""
 
     return ResultWithNonExchangeableIdToken(
         ok=True,
