@@ -91,7 +91,7 @@ def _build_patch_id_token_redirect(
         ),
         user_id=None,
         id_token=None,
-        new_id_token_response=None,
+        invalid_token_response=None,
     )
 
 
@@ -129,7 +129,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     if app_home_patch_id_token_path == "":
@@ -148,7 +148,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Validate request object
@@ -169,7 +169,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     headers = request.get("headers")
@@ -189,7 +189,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     client_secret = config.get("client_secret", "")
@@ -249,7 +249,7 @@ def verify_app_home_req(
                 ),
                 user_id=None,
                 id_token=None,
-                new_id_token_response=None,
+                invalid_token_response=None,
             )
         id_token = auth_header[7:]  # Remove "Bearer " prefix
 
@@ -269,7 +269,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     payload = None
@@ -332,7 +332,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Verify the audience (aud) matches the clientId
@@ -360,7 +360,7 @@ def verify_app_home_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Extract shop from dest claim (parse as URL and get hostname)
@@ -380,8 +380,8 @@ def verify_app_home_req(
             "Link": '<https://cdn.shopify.com>; rel="preconnect", <https://cdn.shopify.com/shopifycloud/app-bridge.js>; rel="preload"; as="script", <https://cdn.shopify.com/shopifycloud/polaris.js>; rel="preload"; as="script"',
         }
 
-    # Build new_id_token_response
-    new_id_token_response = None
+    # Build invalid_token_response
+    invalid_token_response = None
     if not has_authorization_header:
         # Document request - build patch ID token URL
         clean_query = _remove_query_param(parsed_url.query, "id_token")
@@ -394,7 +394,7 @@ def verify_app_home_req(
 
         patch_id_token_location = f"{parsed_url.scheme}://{parsed_url.netloc}{app_home_patch_id_token_path}?{patch_id_token_query}"
 
-        new_id_token_response = Res(
+        invalid_token_response = Res(
             status=302,
             body="",
             headers={
@@ -403,7 +403,7 @@ def verify_app_home_req(
         )
     else:
         # Fetch request
-        new_id_token_response = Res(
+        invalid_token_response = Res(
             status=401,
             body="",
             headers={
@@ -435,5 +435,5 @@ def verify_app_home_req(
             token=id_token,
             claims=payload,
         ),
-        new_id_token_response=new_id_token_response,
+        invalid_token_response=invalid_token_response,
     )

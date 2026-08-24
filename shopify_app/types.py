@@ -272,7 +272,7 @@ class ResultWithExchangeableIdToken:
         response: Suggested HTTP response to return
         user_id: The user ID from the token's sub claim, or None on failure
         id_token: ID token details (exchangeable), or None on failure
-        new_id_token_response: Pre-built response for token refresh scenarios
+        invalid_token_response: Pre-built response for token refresh scenarios
     """
 
     ok: bool
@@ -281,7 +281,7 @@ class ResultWithExchangeableIdToken:
     response: Res
     user_id: Optional[str]
     id_token: Optional[IdTokenDetails]
-    new_id_token_response: Optional[Res]
+    invalid_token_response: Optional[Res]
 
 
 @dataclass(frozen=True)

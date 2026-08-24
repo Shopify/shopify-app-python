@@ -130,7 +130,7 @@ class ShopifyApp:
             request (RequestInput): A RequestInput dict with method, headers, url, and body fields
 
         Returns:
-            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and new_id_token_response fields
+            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and invalid_token_response fields
         """
         return verify_pos_ui_ext_req(request, self.config)
 
@@ -158,7 +158,7 @@ class ShopifyApp:
             request (RequestInput): A RequestInput dict with method, headers, url, and body fields
 
         Returns:
-            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and new_id_token_response fields
+            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and invalid_token_response fields
         """
         return verify_admin_ui_ext_req(request, self.config)
 
@@ -173,7 +173,7 @@ class ShopifyApp:
             app_home_patch_id_token_path (str): Path to the patch ID token page
 
         Returns:
-            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and new_id_token_response fields
+            ResultWithExchangeableIdToken: Verification result with ok, shop, user_id, id_token, log, response, and invalid_token_response fields
         """
         return verify_app_home_req(request, self.config, app_home_patch_id_token_path)
 

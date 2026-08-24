@@ -49,7 +49,7 @@ def verify_admin_ui_ext_req(
             response=Res(status=500, body="", headers={}),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     headers = request.get("headers")
@@ -65,7 +65,7 @@ def verify_admin_ui_ext_req(
             response=Res(status=500, body="", headers={}),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     url = request.get("url")
@@ -81,7 +81,7 @@ def verify_admin_ui_ext_req(
             response=Res(status=500, body="", headers={}),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     client_secret = config.get("client_secret", "")
@@ -116,7 +116,7 @@ def verify_admin_ui_ext_req(
                 ),
                 user_id=None,
                 id_token=None,
-                new_id_token_response=None,
+                invalid_token_response=None,
             )
 
     # Check for Authorization header
@@ -132,7 +132,7 @@ def verify_admin_ui_ext_req(
             response=Res(status=401, body="Unauthorized", headers={}),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Extract the Bearer token
@@ -153,7 +153,7 @@ def verify_admin_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     id_token = auth_header[7:]  # Remove "Bearer " prefix
@@ -204,7 +204,7 @@ def verify_admin_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Verify the audience (aud) matches the clientId
@@ -225,7 +225,7 @@ def verify_admin_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Extract shop from dest claim
@@ -250,7 +250,7 @@ def verify_admin_ui_ext_req(
             token=id_token,
             claims=payload,
         ),
-        new_id_token_response=Res(
+        invalid_token_response=Res(
             status=401,
             body="",
             headers={"X-Shopify-Retry-Invalid-Session-Request": "1"},

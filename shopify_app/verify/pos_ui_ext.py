@@ -32,7 +32,7 @@ def verify_pos_ui_ext_req(
         config (dict): The app configuration with client_id, client_secret and optional old_client_secret
 
     Returns:
-        ResultWithExchangeableIdToken: Verification result with ok, shop, log, response, user_id, id_token, and new_id_token_response fields
+        ResultWithExchangeableIdToken: Verification result with ok, shop, log, response, user_id, id_token, and invalid_token_response fields
     """
     req = redact_http_log(request)
     # Validate request object
@@ -53,7 +53,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     headers = request.get("headers")
@@ -73,7 +73,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     url = request.get("url")
@@ -93,7 +93,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     client_id = config.get("client_id", "")
@@ -128,7 +128,7 @@ def verify_pos_ui_ext_req(
                 ),
                 user_id=None,
                 id_token=None,
-                new_id_token_response=None,
+                invalid_token_response=None,
             )
 
     # Check for Authorization header
@@ -148,7 +148,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Extract the Bearer token
@@ -169,7 +169,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     id_token = auth_header[7:]  # Remove "Bearer " prefix
@@ -223,7 +223,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Verify the audience (aud) matches clientId
@@ -244,7 +244,7 @@ def verify_pos_ui_ext_req(
             ),
             user_id=None,
             id_token=None,
-            new_id_token_response=None,
+            invalid_token_response=None,
         )
 
     # Extract shop from dest claim (format: https://shop-name.myshopify.com)
@@ -273,5 +273,5 @@ def verify_pos_ui_ext_req(
             token=id_token,
             claims=payload,
         ),
-        new_id_token_response=None,
+        invalid_token_response=None,
     )
