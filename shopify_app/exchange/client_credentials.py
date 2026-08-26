@@ -22,7 +22,7 @@ from ..types import (
     RequestInput,
     Res,
 )
-from ..utils import _get_user_agent, redact_http_log
+from ..utils import _get_user_agent, redact_http_log, redact_http_response_body
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 from ._response_builders import build_network_error_response
 from ._validation import validate_shop
@@ -86,8 +86,12 @@ def exchange_using_client_credentials(
             response_headers = (
                 dict(response.headers) if hasattr(response, "headers") else {}
             )
+            # The token endpoint response carries the newly issued
+            # credentials, so redact them before this goes into a log.
             res_obj = Res(
-                status=status_code, body=response_body, headers=response_headers
+                status=status_code,
+                body=redact_http_response_body(response_body),
+                headers=response_headers,
             )
 
             # Handle 200 success
@@ -353,8 +357,12 @@ async def exchange_using_client_credentials_async(
             response_headers = (
                 dict(response.headers) if hasattr(response, "headers") else {}
             )
+            # The token endpoint response carries the newly issued
+            # credentials, so redact them before this goes into a log.
             res_obj = Res(
-                status=status_code, body=response_body, headers=response_headers
+                status=status_code,
+                body=redact_http_response_body(response_body),
+                headers=response_headers,
             )
 
             # Handle 200 success
