@@ -395,7 +395,11 @@ def _handle_429_retry_sync(
                 res=res,
             )
         )
-        time.sleep(int(retry_after))
+        try:
+            delay = float(retry_after)
+        except (TypeError, ValueError):
+            delay = 1.0
+        time.sleep(delay)
         return (True, False, None)
 
     if status_code == 429 and attempt == max_retries:
@@ -451,7 +455,11 @@ async def _handle_429_retry_async(
                 res=res,
             )
         )
-        await asyncio.sleep(int(retry_after))
+        try:
+            delay = float(retry_after)
+        except (TypeError, ValueError):
+            delay = 1.0
+        await asyncio.sleep(delay)
         return (True, False, None)
 
     if status_code == 429 and attempt == max_retries:
