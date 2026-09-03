@@ -70,7 +70,7 @@ def app_home_redirect(
             shop=shop,
             log=LogWithReq(
                 code="invalid_redirect_url",
-                detail=f"Redirect URL must be a relative path starting with '/'. Received {redirect_url}. Respond 400 Bad Request using the provided response.",
+                detail="Redirect URL was not a safe root-relative path. Respond 400 Bad Request using the provided response.",
                 req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),
@@ -169,6 +169,11 @@ def _is_valid_relative_url(redirect_url: str) -> bool:
 
     # Must not be protocol-relative (//evil.com)
     if redirect_url.startswith("//"):
+        return False
+
+    # Browsers remove tabs, line feeds, and carriage returns during URL
+    # preprocessing, which can turn an accepted URL into a protocol-relative URL
+    if any(control in redirect_url for control in ("\t", "\n", "\r")):
         return False
 
     # Must not be backslash-prefixed (/\evil.com) — browsers normalize \ to /
