@@ -7,9 +7,8 @@ This module provides functions to exchange client credentials for API access tok
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import httpx
 
@@ -54,13 +53,6 @@ def exchange_using_client_credentials(
     if not is_valid:
         if error is None:
             raise RuntimeError("validate_shop returned invalid but no error")
-        return error
-
-    # Validate shop format
-    is_valid, error = _validate_shop_format(shop)
-    if not is_valid:
-        if error is None:
-            raise RuntimeError("_validate_shop_format returned invalid but no error")
         return error
 
     # Build request
@@ -119,35 +111,6 @@ def exchange_using_client_credentials(
                 "client credentials exchange",
                 "client_credentials",
             )
-
-
-def _validate_shop_format(
-    shop: str,
-) -> Tuple[bool, Optional[ClientCredentialsExchangeResult]]:
-    """Validate shop format (alphanumeric and hyphens only).
-
-    Args:
-        shop: Shop string to validate format
-
-    Returns:
-        tuple: (is_valid: bool, error_response: ClientCredentialsExchangeResult or None)
-    """
-    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$", shop):
-        return (
-            False,
-            ClientCredentialsExchangeResult(
-                ok=False,
-                shop=None,
-                access_token=None,
-                log=Log(
-                    code="configuration_error",
-                    detail="Expected shop to be a valid shop domain (e.g., 'shop-name')",
-                ),
-                http_logs=[],
-                response=Res(status=500, body="", headers={}),
-            ),
-        )
-    return (True, None)
 
 
 def _build_request(client_id, client_secret, shop):
@@ -325,13 +288,6 @@ async def exchange_using_client_credentials_async(
     if not is_valid:
         if error is None:
             raise RuntimeError("validate_shop returned invalid but no error")
-        return error
-
-    # Validate shop format
-    is_valid, error = _validate_shop_format(shop)
-    if not is_valid:
-        if error is None:
-            raise RuntimeError("_validate_shop_format returned invalid but no error")
         return error
 
     # Build request

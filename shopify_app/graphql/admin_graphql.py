@@ -18,6 +18,7 @@ from shopify_app.types import AppConfig, GQLResult, HttpLog, Log, RequestInput, 
 from shopify_app.utils import _get_user_agent, _to_res, redact_http_log
 
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
+from ..utils.shop import _is_valid_shop_name
 
 
 def admin_graphql_request(
@@ -313,6 +314,23 @@ def _validate_graphql_params(
                 ok=False,
                 shop=None,
                 log=Log(code="missing_shop", detail="Shop domain is required"),
+                response=Res(status=400, body="", headers={}),
+                data=None,
+                extensions=None,
+                http_logs=[],
+            ),
+        )
+
+    if not _is_valid_shop_name(shop):
+        return (
+            False,
+            GQLResult(
+                ok=False,
+                shop=None,
+                log=Log(
+                    code="invalid_shop",
+                    detail="Expected shop to be a valid shop domain (e.g., 'shop-name')",
+                ),
                 response=Res(status=400, body="", headers={}),
                 data=None,
                 extensions=None,
