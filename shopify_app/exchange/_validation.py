@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Literal, Optional, Tuple, Union, overload
 
 from ..types import ClientCredentialsExchangeResult, Log, Res, TokenExchangeResult
+from ..utils.shop import _is_valid_shop_name
 
 
 @overload
@@ -100,7 +101,7 @@ def validate_shop(
     shop: str,
     result_type: Literal["token_exchange", "client_credentials"] = "token_exchange",
 ) -> Tuple[bool, Optional[Union[TokenExchangeResult, ClientCredentialsExchangeResult]]]:
-    """Validate shop parameter.
+    """Validate that shop is a non-empty, valid shop name.
 
     Used by: client_credentials.py, refresh_token.py
 
@@ -112,10 +113,14 @@ def validate_shop(
         tuple: (is_valid: bool, error_response: dataclass or None)
     """
     if not shop or not isinstance(shop, str):
-        log = Log(
-            code="configuration_error",
-            detail="Expected shop to be a non-empty string, but got ''",
-        )
+        detail = "Expected shop to be a non-empty string, but got ''"
+    elif not _is_valid_shop_name(shop):
+        detail = "Expected shop to be a valid shop domain (e.g., 'shop-name')"
+    else:
+        detail = None
+
+    if detail is not None:
+        log = Log(code="configuration_error", detail=detail)
         response = Res(status=500, body="", headers={})
 
         if result_type == "client_credentials":

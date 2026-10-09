@@ -20,6 +20,7 @@ from ..types import (
     ResultWithLoggedInCustomerId,
 )
 from ..utils import redact_http_log
+from ..utils.compare import _constant_time_equals
 
 
 def verify_app_proxy_req(
@@ -183,12 +184,12 @@ def verify_app_proxy_req(
 
     # Try current secret first
     calculated_hmac = calculate_hmac_hex(client_secret)
-    signature_valid = hmac.compare_digest(received_signature, calculated_hmac)
+    signature_valid = _constant_time_equals(received_signature, calculated_hmac)
 
     # If current secret fails and old secret is provided, try old secret
     if not signature_valid and old_client_secret:
         calculated_hmac_old = calculate_hmac_hex(old_client_secret)
-        signature_valid = hmac.compare_digest(received_signature, calculated_hmac_old)
+        signature_valid = _constant_time_equals(received_signature, calculated_hmac_old)
 
     if not signature_valid:
         return ResultWithLoggedInCustomerId(

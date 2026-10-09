@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3]
+
+- Return a 401 response instead of raising `TypeError` when the HMAC header of `verify_webhook_req` or `verify_flow_action_req`, or the `signature` of `verify_app_proxy_req`, contains characters that are not ASCII.
+- Validate the shop before building request URLs. `exchange_using_client_credentials`, `refresh_token_exchanged_access_token` and `admin_graphql_request` return an error when `shop` is not a valid shop name (e.g., `shop-name`). `exchange_using_token_exchange` builds the request URL from the validated shop name.
+- `app_home_patch_id_token` returns a 400 response when the `shop` query parameter is not a valid shop domain (e.g., `shop-name.myshopify.com`).
+
 ## [1.0.2]
 
 - Harden App Home Redirect URL handling.
