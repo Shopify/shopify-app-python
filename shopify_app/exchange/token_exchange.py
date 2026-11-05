@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
@@ -34,6 +33,7 @@ from ..utils import (
     redact_http_response_body,
 )
 from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
+from ..utils.shop import _is_valid_shop_domain
 from ._response_builders import build_network_error_response
 from ._validation import validate_client_id
 
@@ -113,15 +113,11 @@ def token_exchange(
     shop = claims.get("dest", "")
     jwt_string = _get_attr(id_token, "token", "")
 
-    # Normalize shop URL for API request
-    shop_url = shop if shop.startswith("https://") else f"https://{shop}"
-
-    # Extract shop name (remove https:// and .myshopify.com)
-    shop_name = (
-        shop.replace("https://", "")
-        .replace("http://", "")
-        .replace(".myshopify.com", "")
-    )
+    validated_shop_name = _shop_name_from_dest(shop)
+    if validated_shop_name is None:
+        raise RuntimeError("_validate_id_token accepted an invalid dest")
+    shop_name = validated_shop_name
+    shop_url = f"https://{shop_name}.myshopify.com"
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(
@@ -353,23 +349,27 @@ def _validate_id_token(
         ),
     )
 
-    # Strip protocol prefix
-    dest_without_protocol = shop_from_token.replace("https://", "").replace(
-        "http://", ""
-    )
-
-    # dest must end with .myshopify.com (not just contain it anywhere)
-    if not dest_without_protocol.endswith(".myshopify.com"):
-        return invalid_dest_error
-
-    # Extract shop name by removing .myshopify.com suffix
-    shop_name_part = dest_without_protocol[: -len(".myshopify.com")]
-
-    # Validate shop name against regex
-    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$", shop_name_part):
+    if _shop_name_from_dest(shop_from_token) is None:
         return invalid_dest_error
 
     return (True, None)
+
+
+def _shop_name_from_dest(dest: str) -> Optional[str]:
+    """
+    Return the shop name from a dest claim, or None if dest is not a valid shop URL.
+
+    Accepts "https://shop-name.myshopify.com", "http://shop-name.myshopify.com"
+    and "shop-name.myshopify.com".
+    """
+    domain = dest
+    for prefix in ("https://", "http://"):
+        if domain.startswith(prefix):
+            domain = domain[len(prefix) :]
+            break
+    if not _is_valid_shop_domain(domain):
+        return None
+    return domain[: -len(".myshopify.com")]
 
 
 def _build_request(
@@ -764,15 +764,11 @@ async def token_exchange_async(
     shop = claims.get("dest", "")
     jwt_string = _get_attr(id_token, "token", "")
 
-    # Normalize shop URL for API request
-    shop_url = shop if shop.startswith("https://") else f"https://{shop}"
-
-    # Extract shop name (remove https:// and .myshopify.com)
-    shop_name = (
-        shop.replace("https://", "")
-        .replace("http://", "")
-        .replace(".myshopify.com", "")
-    )
+    validated_shop_name = _shop_name_from_dest(shop)
+    if validated_shop_name is None:
+        raise RuntimeError("_validate_id_token accepted an invalid dest")
+    shop_name = validated_shop_name
+    shop_url = f"https://{shop_name}.myshopify.com"
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(

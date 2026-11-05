@@ -169,7 +169,7 @@ def _verify_non_exchangeable_id_token(
                 },
             )
             break  # Successfully decoded
-        except PyJWTError as e:
+        except (PyJWTError, RecursionError) as e:
             verification_error = e
             continue  # Try next secret
 

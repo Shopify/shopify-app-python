@@ -292,7 +292,7 @@ def verify_app_home_req(
                 },
             )
             break
-        except PyJWTError as e:
+        except (PyJWTError, RecursionError) as e:
             verification_error = e
             continue  # Try next secret
 

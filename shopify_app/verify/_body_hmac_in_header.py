@@ -16,6 +16,7 @@ from typing import Sequence
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
 from ..utils import redact_http_log
+from ..utils.compare import _constant_time_equals
 from ..utils.headers import _normalize_headers
 
 
@@ -164,12 +165,12 @@ def _verify_body_hmac_in_header(
 
     # Try current secret first
     calculated_hmac = calculate_hmac(client_secret)
-    hmac_valid = hmac.compare_digest(received_hmac, calculated_hmac)
+    hmac_valid = _constant_time_equals(received_hmac, calculated_hmac)
 
     # If current secret fails and old secret is provided, try old secret
     if not hmac_valid and old_client_secret:
         calculated_hmac_old = calculate_hmac(old_client_secret)
-        hmac_valid = hmac.compare_digest(received_hmac, calculated_hmac_old)
+        hmac_valid = _constant_time_equals(received_hmac, calculated_hmac_old)
 
     if not hmac_valid:
         return ResultForReq(

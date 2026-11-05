@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ..types import AppConfig, LogWithReq, RequestInput, Res, ResultForReq
 from ..utils import redact_http_log
+from ..utils.shop import _is_valid_shop_domain
 
 
 def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultForReq:
@@ -76,6 +77,18 @@ def app_home_patch_id_token(request: RequestInput, config: AppConfig) -> ResultF
             log=LogWithReq(
                 code="missing_shop",
                 detail="Shop parameter is required in request URL query string but was not provided. Respond 400 Bad Request using the provided response.",
+                req=req,
+            ),
+            response=Res(status=400, body="Bad Request", headers={}),
+        )
+
+    if not _is_valid_shop_domain(shop):
+        return ResultForReq(
+            ok=False,
+            shop=None,
+            log=LogWithReq(
+                code="invalid_shop",
+                detail="Shop parameter in request URL query string is not a valid shop domain. Respond 400 Bad Request using the provided response.",
                 req=req,
             ),
             response=Res(status=400, body="Bad Request", headers={}),

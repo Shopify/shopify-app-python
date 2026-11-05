@@ -24,8 +24,10 @@ This package encodes the secure, correct way to build a Shopify app. Most of wha
   - [Verifying requests with exchangeable ID tokens](#verifying-requests-with-exchangeable-id-tokens)
   - [Navigating inside and outside the App Home iframe](#navigating-inside-and-outside-the-app-home-iframe)
   - [GraphQL requests](#graphql-requests)
+  - [Optional access scopes](#optional-access-scopes)
   - [Verifying requests without exchangeable ID tokens](#verifying-requests-without-exchangeable-id-tokens)
   - [Getting access tokens with client credentials](#getting-access-tokens-with-client-credentials)
+  - [Authenticating client credentials with a client assertion](#authenticating-client-credentials-with-a-client-assertion)
   - [Async variants](#async-variants)
 - [Common misuses to avoid](#common-misuses-to-avoid)
 - [Contributing, issues, feedback and feature requests](#contributing-issues-feedback-and-feature-requests)
@@ -45,11 +47,20 @@ Before you start, make sure you have:
 pip install --upgrade shopifyapp
 ```
 
+To sign client assertions locally with `create_client_assertion`, install the
+optional signing support as well:
+
+```bash
+pip install --upgrade "shopifyapp[assertions]"
+```
+
 ## Requirements
 
 - Python >= 3.8
 - httpx for making HTTP requests
 - pyjwt for JWT token handling
+- The `assertions` extra adds pyjwt's cryptography backend. It is only needed
+  for `create_client_assertion`; every other feature works without it.
 
 ## Features
 
@@ -69,8 +80,12 @@ Request Verification:
 Exchange:
 
 - `exchange_using_token_exchange`: Use Token Exchange to exchange an ID token for an access token
-- `exchange_using_client_credentials`: Get access tokens via client credentials
+- `exchange_using_client_credentials`: Get access tokens via client credentials, authenticated with the client secret or with a client assertion
 - `refresh_token_exchanged_access_token`: Refresh an access token that was created using Token Exchange. Checks if a token refresh can and should happen.
+
+Signing:
+
+- `create_client_assertion`: Create one signed JWT to authenticate a client credentials request. Standalone; needs the `assertions` extra.
 
 GraphQL:
 
@@ -767,6 +782,14 @@ def process_job(shop):
 - `data`: The GraphQL response data (dict), or `None` if the request failed.
 - `extensions`: The GraphQL extensions (dict, e.g., cost information), or `None` if not present.
 
+### Optional access scopes
+
+Use [`admin_graphql_request`](#graphql-requests) on your server to query granted scopes or revoke optional scopes. Check the revoke mutation's `userErrors` even when the package result is `ok`.
+
+To request merchant approval, use App Bridge in embedded apps or Shopify's approval redirect in standalone apps.
+
+See [Manage access scopes](https://shopify.dev/docs/apps/build/authentication-authorization/manage-access-scopes) for configuration, deployment, examples, and grant rules.
+
 ### Verifying requests without exchangeable ID tokens
 
 The following requests do not provide the required information for token exchange:
@@ -867,10 +890,87 @@ The `access_token` dataclass contains:
 | `access_mode` | Always "offline"                                    |
 | `token`       | The access token string                             |
 | `scope`       | The granted scopes                                  |
-| `expires`     | ISO 8601 datetime when the token expires (24 hours) |
+| `expires`     | ISO 8601 expiry calculated from the endpoint response |
 | `user`        | Always `None` for client credentials                |
 
-Note: Client credentials tokens expire after 24 hours and do not include a refresh token. When the token expires, request a new one using `exchange_using_client_credentials` with the same credentials.
+Note: Client credentials tokens do not include a refresh token. Read `expires`
+to know when the token expires, and request a new one with
+`exchange_using_client_credentials` when it does.
+
+These methods do not follow redirects with either authentication method, even
+if an injected client enables them. A 307/308 can forward the credential-bearing
+POST body. Redirects return a failed result using the existing error-code rules,
+with the original status in the HTTP log. The per-request setting leaves the
+client configuration and other operations unchanged.
+
+> **Upgrade note.** Client-secret requests now override redirect-enabled client
+> defaults. Check the shop and intended endpoint instead of relying on a redirect.
+
+### Authenticating client credentials with a client assertion
+
+Instead of the client secret, one client credentials call can authenticate with
+a client assertion: a short-lived JWT your app signs with a private key whose
+public key is registered with Shopify. Assertion authentication needs an active
+registered public key and an app installation on the target shop. To create a key pair and register its public key, see
+[Get application-only access tokens](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens).
+
+`client_assertion` is a keyword argument of each call, not app configuration.
+Omit it, or pass `None`, to keep client-secret authentication. The app
+constructor is unchanged, and the package never signs an assertion for you.
+Keep the real client secret in the existing app configuration.
+
+Supply an already-loaded native private key to `create_client_assertion`, then
+pass the returned string to one exchange call:
+
+```python
+from shopify_app.assertions import create_client_assertion
+
+assertion = create_client_assertion(
+    shop="shop-name",
+    client_id=client_id,
+    kid="the-registered-key-id",
+    private_key=private_key,
+    lifetime_seconds=60,  # optional: default 60, maximum 300
+)
+
+result = shopify.exchange_using_client_credentials(
+    shop="shop-name", client_assertion=assertion
+)
+```
+
+`create_client_assertion` is standalone: it needs no `ShopifyApp` instance,
+client secret, ID token or network access. It accepts only an already-loaded
+RSA private key of at least 2048 bits (`RS256`) or an EC private key on the
+P-256 curve (`ES256`). PEM strings, JWKs, file paths, passphrases, shared
+secrets, public keys and signer callbacks are rejected. Invalid input raises
+`ClientAssertionArgumentError`, a missing `assertions` extra raises
+`ClientAssertionSigningUnavailableError`, and a crypto-library failure raises
+`ClientAssertionSigningError`. No failure makes an HTTP request.
+
+Load the key once, for example with `cryptography`'s
+`serialization.load_pem_private_key`, and pass the key object, never the key
+text. The package rejects key text without echoing it, but an error reporter
+that records local variables (Sentry's Python SDK does by default) can still
+capture text passed by mistake.
+
+An assertion authenticates only once:
+
+- Create a fresh assertion for every attempt, including after a timeout, a 503
+  or any other failure, and even while the previous assertion is still inside
+  its lifetime.
+- An assertion request makes one HTTP attempt and never falls back to the
+  client secret. Redirects are not followed on either authentication path.
+- The request must carry no other credential. If an injected HTTP client is
+  configured with an `Authorization` or `X-Shopify-Access-Token` header, the
+  call returns a `configuration_error` result before sending anything.
+- An injected client must be an inspectable `httpx.Client` or `AsyncClient`
+  without default query parameters. The package does not change client defaults.
+  Custom hooks and transports must honor the per-request authentication and
+  redirect controls and must not add retries.
+- The logged request body shows `client_assertion` as `[REDACTED]`.
+
+If you sign with a remote signer or a KMS, skip `create_client_assertion` and
+pass your own completed assertion to `client_assertion`.
 
 ### Async variants
 
