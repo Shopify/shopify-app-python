@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0]
+
+- Add optional `client_assertion` keyword argument to `exchange_using_client_credentials` and `exchange_using_client_credentials_async`. Pass an app-created JWT to authenticate one request with a client assertion; omit it, or pass `None`, to keep client-secret authentication.
+- Client-credentials exchanges now reject redirects for both authentication methods, including with an injected client that enables redirects. This changes client-secret calls that relied on redirect following. Client defaults and other operations are unchanged.
+- Add `shopify_app.assertions.create_client_assertion`, a standalone signer for one client assertion. It takes an already-loaded RSA (`RS256`) or EC P-256 (`ES256`) private key, and needs no `ShopifyApp` instance, client secret or network access.
+- Add the optional `assertions` extra for signing support: `pip install "shopifyapp[assertions]"`. Base dependencies are unchanged.
+- Redact `client_assertion` in logged request bodies.
+
+## [1.0.3]
+
+- Return a 401 response instead of raising `TypeError` when the HMAC header of `verify_webhook_req` or `verify_flow_action_req`, or the `signature` of `verify_app_proxy_req`, contains characters that are not ASCII.
+- Validate the shop before building request URLs. `exchange_using_client_credentials`, `refresh_token_exchanged_access_token` and `admin_graphql_request` return an error when `shop` is not a valid shop name (e.g., `shop-name`). `exchange_using_token_exchange` builds the request URL from the validated shop name.
+- `app_home_patch_id_token` returns a 400 response when the `shop` query parameter is not a valid shop domain (e.g., `shop-name.myshopify.com`).
+
 ## [1.0.2]
 
 - Harden App Home Redirect URL handling.

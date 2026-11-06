@@ -180,7 +180,7 @@ def verify_admin_ui_ext_req(
                 },
             )
             break  # Successfully decoded
-        except PyJWTError as e:
+        except (PyJWTError, RecursionError) as e:
             verification_error = e
             continue  # Try next secret
 

@@ -31,6 +31,14 @@ dependencies = [
     "httpx>=0.24.0",
 ]
 
+[project.optional-dependencies]
+# Asymmetric signing support for shopify_app.assertions.create_client_assertion.
+# Keep this optional: apps that authenticate with a client secret, or that sign
+# with a remote signer or KMS, do not need a local crypto backend.
+assertions = [
+    "pyjwt[crypto]>=2.8.0",
+]
+
 [project.urls]
 homepage = "https://github.com/Shopify/shopify-app-python/"
 issues = "https://community.shopify.dev/c/shopify-cli-libraries/14"

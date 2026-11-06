@@ -293,6 +293,8 @@ class ShopifyApp:
         self,
         shop: str,
         http_client: Optional[httpx.Client] = None,
+        *,
+        client_assertion: Optional[str] = None,
     ) -> ClientCredentialsExchangeResult:
         """
         Exchange client credentials for an API access token.
@@ -300,12 +302,20 @@ class ShopifyApp:
         Args:
             shop (str): The shop domain (e.g., "shop-name")
             http_client: Optional HTTP client for testing (undocumented)
+            client_assertion (str): Optional app-created JWT for this call. When
+                omitted or None, the request authenticates with the configured
+                client secret. Create one with
+                ``shopify_app.assertions.create_client_assertion`` or another
+                signer, and use a fresh assertion for every call.
 
         Returns:
             ClientCredentialsExchangeResult: Result with ok, shop, access_token, log, response, and http_logs
         """
         return exchange_using_client_credentials(
-            shop=shop, app_config=self.config, http_client=http_client
+            shop=shop,
+            app_config=self.config,
+            http_client=http_client,
+            client_assertion=client_assertion,
         )
 
     def admin_graphql_request(
@@ -407,6 +417,8 @@ class ShopifyApp:
         self,
         shop: str,
         http_client: Optional[httpx.AsyncClient] = None,
+        *,
+        client_assertion: Optional[str] = None,
     ) -> ClientCredentialsExchangeResult:
         """
         Async version of exchange_using_client_credentials.
@@ -416,6 +428,11 @@ class ShopifyApp:
         Args:
             shop (str): The shop domain (e.g., "shop-name")
             http_client: Optional async HTTP client for testing (httpx.AsyncClient)
+            client_assertion (str): Optional app-created JWT for this call. When
+                omitted or None, the request authenticates with the configured
+                client secret. Create one with
+                ``shopify_app.assertions.create_client_assertion`` or another
+                signer, and use a fresh assertion for every call.
 
         Returns:
             ClientCredentialsExchangeResult: Result with ok, shop, access_token, log, response, and http_logs
@@ -424,6 +441,7 @@ class ShopifyApp:
             shop,
             self.config,
             http_client=http_client,
+            client_assertion=client_assertion,
         )
 
     async def admin_graphql_request_async(

@@ -7,9 +7,8 @@ This module provides functions to exchange client credentials for API access tok
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 import httpx
 
@@ -27,11 +26,26 @@ from ..utils.http_client import AsyncHTTPClientContext, HTTPClientContext
 from ._response_builders import build_network_error_response
 from ._validation import validate_shop
 
+# The assertion type is fixed by the OAuth JWT bearer profile. It is not a
+# caller option.
+CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+
+# An assertion request authenticates with the assertion alone, so another
+# credential on the same request is a configuration mistake.
+_CONFLICTING_CREDENTIAL_HEADERS = frozenset({"authorization", "x-shopify-access-token"})
+
+
+class _RequestOptions(TypedDict, total=False):
+    auth: None
+    follow_redirects: bool
+
 
 def exchange_using_client_credentials(
     shop: str,
     app_config: AppConfig,
     http_client: Optional[httpx.Client] = None,
+    *,
+    client_assertion: Optional[str] = None,
 ) -> ClientCredentialsExchangeResult:
     """
     Exchange client credentials for an API access token.
@@ -42,6 +56,8 @@ def exchange_using_client_credentials(
             - client_id: The Shopify app client ID
             - client_secret: The app's client secret
         http_client: Optional HTTP client for testing
+        client_assertion (str): Optional app-created JWT. When omitted or None,
+            the request authenticates with the configured client secret.
 
     Returns:
         ClientCredentialsExchangeResult: Result containing ok, shop, access_token, log, http_logs, and response
@@ -56,17 +72,15 @@ def exchange_using_client_credentials(
             raise RuntimeError("validate_shop returned invalid but no error")
         return error
 
-    # Validate shop format
-    is_valid, error = _validate_shop_format(shop)
-    if not is_valid:
-        if error is None:
-            raise RuntimeError("_validate_shop_format returned invalid but no error")
-        return error
+    assertion_error = _validate_client_assertion(client_assertion, http_client)
+    if assertion_error is not None:
+        return assertion_error
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(
-        client_id, client_secret, shop
+        client_id, client_secret, shop, client_assertion
     )
+    request_options = _request_options(client_assertion)
 
     http_logs: List[HttpLog] = []
 
@@ -77,6 +91,7 @@ def exchange_using_client_credentials(
                 token_endpoint,
                 headers=request_headers,
                 json=request_body,
+                **request_options,
             )
 
             status_code = response.status_code
@@ -108,7 +123,11 @@ def exchange_using_client_credentials(
                 response_data = {}
 
             return _handle_error_response(
-                response_data, shop, http_logs, req_obj, res_obj
+                response_data,
+                shop,
+                http_logs,
+                req_obj,
+                res_obj,
             )
 
         except httpx.RequestError:
@@ -121,53 +140,100 @@ def exchange_using_client_credentials(
             )
 
 
-def _validate_shop_format(
-    shop: str,
-) -> Tuple[bool, Optional[ClientCredentialsExchangeResult]]:
-    """Validate shop format (alphanumeric and hyphens only).
+def _validate_client_assertion(
+    client_assertion: object,
+    http_client: object,
+) -> Optional[ClientCredentialsExchangeResult]:
+    """Validate an optional client assertion and the credentials around it.
 
-    Args:
-        shop: Shop string to validate format
-
-    Returns:
-        tuple: (is_valid: bool, error_response: ClientCredentialsExchangeResult or None)
+    Returns the configuration-error result when the assertion cannot be used,
+    or None when the call may proceed. No HTTP request is made first, and a
+    rejected assertion never falls back to client-secret authentication.
     """
-    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$", shop):
-        return (
-            False,
-            ClientCredentialsExchangeResult(
-                ok=False,
-                shop=None,
-                access_token=None,
-                log=Log(
-                    code="configuration_error",
-                    detail="Expected shop to be a valid shop domain (e.g., 'shop-name')",
-                ),
-                http_logs=[],
-                response=Res(status=500, body="", headers={}),
-            ),
-        )
-    return (True, None)
+    if client_assertion is None:
+        return None
+
+    if not isinstance(client_assertion, str) or not client_assertion.strip():
+        return _configuration_error("Expected clientAssertion to be a non-empty string")
+
+    if http_client is not None:
+        if not isinstance(http_client, (httpx.Client, httpx.AsyncClient)):
+            return _configuration_error(
+                "Client assertion requests require an inspectable HTTP client"
+            )
+        if any(
+            name.lower() in _CONFLICTING_CREDENTIAL_HEADERS
+            for name in http_client.headers
+        ):
+            return _configuration_error(
+                "Client assertion requests must not include other authentication credentials"
+            )
+        if http_client.params:
+            return _configuration_error(
+                "Client assertion requests must use the unmodified shop token endpoint"
+            )
+
+    return None
 
 
-def _build_request(client_id, client_secret, shop):
+def _configuration_error(detail: str) -> ClientCredentialsExchangeResult:
+    """Build the configuration-error result, which makes no HTTP request."""
+    return ClientCredentialsExchangeResult(
+        ok=False,
+        shop=None,
+        access_token=None,
+        log=Log(code="configuration_error", detail=detail),
+        http_logs=[],
+        response=Res(status=500, body="", headers={}),
+    )
+
+
+def _request_options(client_assertion: Optional[str]) -> _RequestOptions:
+    """Per-call controls; secret requests retain configured HTTP authentication."""
+    if client_assertion is None:
+        return {"follow_redirects": False}
+    return {"auth": None, "follow_redirects": False}
+
+
+def _build_request(
+    client_id: str,
+    client_secret: str,
+    shop: str,
+    client_assertion: Optional[str] = None,
+) -> Tuple[str, Dict[str, str], Dict[str, str], RequestInput]:
     """Build client credentials request components.
 
     Args:
         client_id: OAuth client ID
         client_secret: OAuth client secret
         shop: Shop name (e.g., "shop-name")
+        client_assertion: Optional app-created JWT. When supplied, the request
+            authenticates with the assertion instead of the client secret.
 
     Returns:
         tuple: (endpoint, request_body, request_headers, req_obj)
     """
-    token_endpoint = f"https://{shop}.myshopify.com/admin/oauth/access_token"
-
-    request_body = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "client_credentials",
-    }
+    request_body: Dict[str, str]
+    if client_assertion is None:
+        token_endpoint = f"https://{shop}.myshopify.com/admin/oauth/access_token"
+        request_body = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "client_credentials",
+        }
+    else:
+        # The assertion audience is the canonical lowercase shop host.
+        token_endpoint = (
+            f"https://{shop.lower()}.myshopify.com/admin/oauth/access_token"
+        )
+        # Exactly these four fields: no client secret, no scope, no other
+        # authentication method. The assertion is opaque and sent unchanged.
+        request_body = {
+            "client_id": client_id,
+            "grant_type": "client_credentials",
+            "client_assertion_type": CLIENT_ASSERTION_TYPE,
+            "client_assertion": client_assertion,
+        }
 
     request_headers = {
         "Content-Type": "application/json",
@@ -297,6 +363,8 @@ async def exchange_using_client_credentials_async(
     shop: str,
     app_config: AppConfig,
     http_client: Optional[httpx.AsyncClient] = None,
+    *,
+    client_assertion: Optional[str] = None,
 ) -> ClientCredentialsExchangeResult:
     """
     Async version of exchange_using_client_credentials.
@@ -310,6 +378,8 @@ async def exchange_using_client_credentials_async(
             - client_id: The Shopify app client ID
             - client_secret: The app's client secret
         http_client: Optional async HTTP client for testing (httpx.AsyncClient)
+        client_assertion (str): Optional app-created JWT. When omitted or None,
+            the request authenticates with the configured client secret.
 
     Returns:
         ClientCredentialsExchangeResult: Result containing ok, shop, access_token, log, http_logs, and response
@@ -327,17 +397,15 @@ async def exchange_using_client_credentials_async(
             raise RuntimeError("validate_shop returned invalid but no error")
         return error
 
-    # Validate shop format
-    is_valid, error = _validate_shop_format(shop)
-    if not is_valid:
-        if error is None:
-            raise RuntimeError("_validate_shop_format returned invalid but no error")
-        return error
+    assertion_error = _validate_client_assertion(client_assertion, http_client)
+    if assertion_error is not None:
+        return assertion_error
 
     # Build request
     token_endpoint, request_body, request_headers, req_obj = _build_request(
-        client_id, client_secret, shop
+        client_id, client_secret, shop, client_assertion
     )
+    request_options = _request_options(client_assertion)
 
     http_logs: List[HttpLog] = []
 
@@ -348,6 +416,7 @@ async def exchange_using_client_credentials_async(
                 token_endpoint,
                 headers=request_headers,
                 json=request_body,
+                **request_options,
             )
 
             status_code = response.status_code
@@ -379,7 +448,11 @@ async def exchange_using_client_credentials_async(
                 response_data = {}
 
             return _handle_error_response(
-                response_data, shop, http_logs, req_obj, res_obj
+                response_data,
+                shop,
+                http_logs,
+                req_obj,
+                res_obj,
             )
 
         except httpx.RequestError:

@@ -14,6 +14,8 @@ _SENSITIVE_BODY_FIELDS = {
     "subject_token",
     "refresh_token",
     "access_token",
+    # A client assertion authenticates the app, so a log sink must not keep it.
+    "client_assertion",
 }
 # Fields an OAuth token endpoint returns that are reusable credentials. A debug
 # log is a lower-trust sink than the app runtime, so these must never reach it.
@@ -48,7 +50,7 @@ def redact_http_log(req: RequestInput) -> RequestInput:
 
     Redacts:
     - Request body fields: client_secret, subject_token, refresh_token,
-      access_token
+      access_token, client_assertion
     - Request headers: X-Shopify-Access-Token, Authorization (case-insensitive)
     - Request URL params: signature, id_token, hmac (case-insensitive)
     """
